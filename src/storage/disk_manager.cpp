@@ -46,9 +46,7 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
 page_id_t DiskManager::AllocatePage(int fd) {
     // Todo:
     // 简单的自增分配策略，指定文件的页面编号加1
-    page_id_t id = fd2pageno_[fd];
-    fd2pageno_[fd]++;
-    return id;
+    return fd2pageno_[fd]++;
 }
 
 /**
@@ -87,8 +85,7 @@ bool DiskManager::is_file(const std::string &path) {
     struct stat* file_stat;
     file_stat = (struct stat*)malloc(sizeof(struct stat));
     int flag = stat(path.c_str(), file_stat);
-    delete file_stat;
-    return !flag;
+    return !flag && S_ISREG(file_stat->st_mode);
 }
 
 /**
@@ -102,10 +99,12 @@ void DiskManager::create_file(const std::string &path) {
         throw FileExistsError(path);
         return;
     }
-    int fd = open(path.c_str(), O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+//    int fd = open(path.c_str(), O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+    int fd = open(path.c_str(), O_CREAT, 0666);
     if(fd == -1) {
         throw FileNotOpenError(-1);
     }
+    close(fd);
 }
 
 /**
