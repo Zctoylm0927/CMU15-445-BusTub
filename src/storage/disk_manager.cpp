@@ -95,11 +95,8 @@ void DiskManager::create_file(const std::string &path) {
     // Todo:
     // 调用open()函数，使用O_CREAT模式
     // 注意不能重复创建相同文件
-    if(is_file(path)) {
-        throw FileExistsError(path);
-        return;
-    }
-//    int fd = open(path.c_str(), O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+    if(is_file(path)) throw FileExistsError(path);
+    //int fd = open(path.c_str(), O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
     int fd = open(path.c_str(), O_CREAT, 0666);
     if(fd == -1) {
         throw FileNotOpenError(-1);
@@ -114,14 +111,8 @@ void DiskManager::destroy_file(const std::string &path) {
     // Todo:
     // 调用unlink()函数
     // 注意不能删除未关闭的文件
-    if(!is_file(path)) {
-        throw FileNotFoundError(path);
-        return;
-    }
-    if(path2fd_.count(path)) {
-        throw FileNotClosedError(path);
-        return;
-    }
+    if(!is_file(path)) throw FileNotFoundError(path);
+    if(path2fd_.count(path)) throw FileNotClosedError(path);
     int fd = unlink(path.c_str());
 }
 
