@@ -23,7 +23,7 @@ class RmManager {
         }
         disk_manager_->create_file(filename);
         int fd = disk_manager_->open_file(filename);
-
+        
         // 初始化file header
         RmFileHdr file_hdr{};
         file_hdr.record_size = record_size;
