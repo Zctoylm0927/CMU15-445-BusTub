@@ -17,7 +17,7 @@ bool ClockReplacer::Victim(frame_id_t *frame_id) {
     // not found, frame_id=nullptr and return false
     if(Size() == 0) return false;
     size_t find_frame_num  = 0;
-    while(find_frame_num <= capacity_) {
+    while(find_frame_num <= capacity_ + 1) {
         //1. access -> untouch
         if(circular_[hand_] == Status::ACCESSED) circular_[hand_] = Status::UNTOUCHED;
         //2. untouch -> empty
