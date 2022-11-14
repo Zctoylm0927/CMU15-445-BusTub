@@ -10,8 +10,13 @@ int IxNodeHandle::lower_bound(const char *target) const {
     // Todo:
     // 查找当前节点中第一个大于等于target的key，并返回key的位置给上层
     // 提示: 可以采用多种查找方式，如顺序遍历、二分查找等；使用ix_compare()函数进行比较
-
-    return -1;
+    int L = 0, R = page_hdr->num_key;
+    while(L < R) {
+        int mid = (L + R) >> 1;
+        if(ix_compare(get_key(mid), target, file_hdr->col_type, file_hdr->col_len) == -1) L = mid + 1;
+        else R = mid;
+    }
+    return L;
 }
 
 /**
@@ -24,8 +29,13 @@ int IxNodeHandle::upper_bound(const char *target) const {
     // Todo:
     // 查找当前节点中第一个大于target的key，并返回key的位置给上层
     // 提示: 可以采用多种查找方式：顺序遍历、二分查找等；使用ix_compare()函数进行比较
-
-    return -1;
+    int L = 1, R = page_hdr->num_key;
+    while(L < R) {
+        int mid = (L + R) >> 1;
+        if(ix_compare(get_key(mid), target, file_hdr->col_type, file_hdr->col_len) <= 0) L = mid + 1;
+        else R = mid;
+    }
+    return L;
 }
 
 /**
@@ -43,6 +53,13 @@ bool IxNodeHandle::LeafLookup(const char *key, Rid **value) {
     // 3. 如果存在，获取key对应的Rid，并赋值给传出参数value
     // 提示：可以调用lower_bound()和get_rid()函数。
 
+    // key_idx = rid_idx
+    int key_idx = lower_bound(key);
+    if(key_idx < page_hdr->num_key && 
+       ix_compare(get_key(key_idx), key, file_hdr->col_type, file_hdr->col_len) == 0) {
+        *value = get_rid(key_idx);
+        return true;
+    }
     return false;
 }
 
@@ -56,8 +73,10 @@ page_id_t IxNodeHandle::InternalLookup(const char *key) {
     // 1. 查找当前非叶子节点中目标key所在孩子节点（子树）的位置
     // 2. 获取该孩子节点（子树）所在页面的编号
     // 3. 返回页面编号
-
-    return -1;
+    
+    // key in [p_i, p_(i+1) ), upper_bound(key) = p_(i+1)
+    int key_idx = upper_bound(key) - 1;
+    return ValueAt(key_idx);
 }
 
 /**
@@ -80,7 +99,17 @@ void IxNodeHandle::insert_pairs(int pos, const char *key, const Rid *rid, int n)
     // 2. 通过key获取n个连续键值对的key值，并把n个key值插入到pos位置
     // 3. 通过rid获取n个连续键值对的rid值，并把n个rid值插入到pos位置
     // 4. 更新当前节点的键数量
-
+    assert(pos >= 0 && pos <= GetSize());
+    //move
+    char* key_start = get_key(pos);
+    Rid* rid_start = get_rid(pos);
+    int move_num = page_hdr->num_key - pos;
+    memmove(key_start + n * file_hdr->col_len, key_start, move_num * file_hdr->col_len);
+    memmove(rid_start + n * sizeof(Rid), rid_start, move_num * sizeof(Rid));
+    //insert
+    memcpy(key_start, key, n * file_hdr->col_len);
+    memcpy(rid_start, rid, n * sizeof(Rid));
+    SetSize(page_hdr->num_key + n);
 }
 
 /**
@@ -101,8 +130,12 @@ int IxNodeHandle::Insert(const char *key, const Rid &value) {
     // 2. 如果key重复则不插入
     // 3. 如果key不重复则插入键值对
     // 4. 返回完成插入操作之后的键值对数量
-
-    return -1;
+    int key_idx = lower_bound(key);
+    if(key_idx == page_hdr->num_key) 
+        insert_pair(key_idx, key, value);
+    else if(ix_compare(get_key(key_idx), key, file_hdr->col_type, file_hdr->col_len) == 1)
+        insert_pair(key_idx, key, value);
+    return GetSize();
 }
 
 /**
@@ -115,7 +148,14 @@ void IxNodeHandle::erase_pair(int pos) {
     // 1. 删除该位置的key
     // 2. 删除该位置的rid
     // 3. 更新结点的键值对数量
-
+    assert(pos >= 0 && pos < GetSize());
+    int move_num = page_hdr->num_key - (pos + 1);
+    char* key_start = get_key(pos);
+    Rid* rid_start = get_rid(pos);
+    //move
+    memmove(key_start, key_start + file_hdr->col_len, move_num * file_hdr->col_len);
+    memmove(rid_start, rid_start + 1, move_num * sizeof(Rid));
+    page_hdr->num_key--;
 }
 
 /**
@@ -129,8 +169,11 @@ int IxNodeHandle::Remove(const char *key) {
     // 1. 查找要删除键值对的位置
     // 2. 如果要删除的键值对存在，删除键值对
     // 3. 返回完成删除操作后的键值对数量
-
-    return -1;
+    int key_idx = lower_bound(key);
+    if(key_idx < page_hdr->num_key && 
+        ix_compare(get_key(key_idx), key, file_hdr->col_type, file_hdr->col_len) == 0)
+        erase(key_idx);
+    return GetSize();
 }
 
 /**
