@@ -105,7 +105,7 @@ void IxNodeHandle::insert_pairs(int pos, const char *key, const Rid *rid, int n)
     Rid* rid_start = get_rid(pos);
     int move_num = page_hdr->num_key - pos;
     memmove(key_start + n * file_hdr->col_len, key_start, move_num * file_hdr->col_len);
-    memmove(rid_start + n * sizeof(Rid), rid_start, move_num * sizeof(Rid));
+    memmove(rid_start + n , rid_start, move_num * sizeof(Rid));
     //insert
     memcpy(key_start, key, n * file_hdr->col_len);
     memcpy(rid_start, rid, n * sizeof(Rid));
@@ -172,7 +172,7 @@ int IxNodeHandle::Remove(const char *key) {
     int key_idx = lower_bound(key);
     if(key_idx < page_hdr->num_key && 
         ix_compare(get_key(key_idx), key, file_hdr->col_type, file_hdr->col_len) == 0)
-        erase(key_idx);
+        erase_pair(key_idx);
     return GetSize();
 }
 
