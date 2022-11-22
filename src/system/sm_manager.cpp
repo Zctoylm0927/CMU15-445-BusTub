@@ -9,6 +9,8 @@
 #include "record/rm.h"
 #include "record_printer.h"
 
+#define DEBUG 0
+
 bool SmManager::is_dir(const std::string &db_name) {
     struct stat st;
     return stat(db_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
@@ -18,6 +20,21 @@ void SmManager::create_db(const std::string &db_name) {
     // lab3 task1 Todo
     // 利用*inx命令创建目录作为数据库
     // lab3 task1 Todo End
+    if (is_dir(db_name)) 
+        throw DatabaseExistsError(db_name);
+    std::string cmd = "mkdir " + db_name;
+    if (system(cmd.c_str()) < 0)
+        throw UnixError();
+    if (chdir(db_name.c_str()) < 0)
+        throw UnixError();
+    DbMeta *new_db = new DbMeta();
+    new_db->name_ = db_name;
+    std::ofstream ofs(DB_META_NAME);
+    ofs << *new_db;
+    delete new_db;
+    if (chdir("..") < 0) {
+        throw UnixError();
+    }
 }
 
 void SmManager::drop_db(const std::string &db_name) {
@@ -31,6 +48,7 @@ void SmManager::drop_db(const std::string &db_name) {
 }
 
 void SmManager::open_db(const std::string &db_name) {
+    if(DEBUG) printf("start open db\n");
     if (!is_dir(db_name)) {
         throw DatabaseNotFoundError(db_name);
     }
@@ -58,6 +76,7 @@ void SmManager::open_db(const std::string &db_name) {
             }
         }
     }
+    if(DEBUG) printf("end open db\n");
 }
 
 void SmManager::close_db() {
@@ -66,6 +85,23 @@ void SmManager::close_db() {
     // 关闭rm_manager_ ix_manager_文件
     // 清理fhs_, ihs_
     // lab3 task1 Todo End
+    if(DEBUG) printf("start close db\n");
+    std::ofstream ofs(DB_META_NAME);
+    db_.name_.clear();
+    db_.tabs_.clear();
+    for (auto &entry : fhs_) {
+        rm_manager_->close_file(entry.second.get());
+    }
+	fhs_.clear();
+    if(DEBUG) printf("close file success\n");
+    for (auto &entry : ihs_) {
+        ix_manager_->close_index(entry.second.get());
+    }
+    if(DEBUG) printf("close index success\n");
+	ihs_.clear();
+    if (chdir("..") < 0)
+        throw UnixError();        
+    if(DEBUG) printf("end close db\n");
 }
 
 void SmManager::show_tables(Context *context) {
@@ -98,7 +134,8 @@ void SmManager::desc_table(const std::string &tab_name, Context *context) {
     printer.print_separator(context);
 }
 
-void SmManager::create_table(const std::string &tab_name, const std::vector<ColDef> &col_defs, Context *context) {
+void SmManager::create_table(const std::string &tab_name, const std::vector<ColDef> &col_defs, Context *context) {    
+    if(DEBUG) printf("start create table\n");
     if (db_.is_table(tab_name)) {
         throw TableExistsError(tab_name);
     }
@@ -122,6 +159,7 @@ void SmManager::create_table(const std::string &tab_name, const std::vector<ColD
     db_.tabs_[tab_name] = tab;
     // fhs_[tab_name] = rm_manager_->open_file(tab_name);
     fhs_.emplace(tab_name, rm_manager_->open_file(tab_name));
+    if(DEBUG) printf("end create table\n");
 }
 
 void SmManager::drop_table(const std::string &tab_name, Context *context) {
@@ -130,9 +168,24 @@ void SmManager::drop_table(const std::string &tab_name, Context *context) {
     // Close & destroy record file
     // Close & destroy index file
     // lab3 task1 Todo End
+    if(DEBUG) printf("start drop table\n");
+    TabMeta &tab = db_.get_table(tab_name);
+    if(DEBUG) printf("%s\n",tab_name.c_str());
+    tab.delete_mark_ = true;
+    rm_manager_->close_file(fhs_.at(tab_name).get());
+    rm_manager_->destroy_file(tab_name);
+    if(DEBUG) printf("delete file success\n");
+    for (auto &col : tab.cols) {
+        if (col.index)
+            drop_index(tab_name, col.name ,context);
+    }
+    db_.tabs_.erase(tab_name); 
+    fhs_.erase(tab_name);
+    if(DEBUG) printf("end drop table\n");
 }
 
 void SmManager::create_index(const std::string &tab_name, const std::string &col_name, Context *context) {
+    if(DEBUG) printf("start create index\n");
     TabMeta &tab = db_.get_table(tab_name);
     auto col = tab.get_col(col_name);
     if (col->index) {
@@ -159,9 +212,11 @@ void SmManager::create_index(const std::string &tab_name, const std::string &col
     ihs_.emplace(index_name, std::move(ih));
     // Mark column index as created
     col->index = true;
+    if(DEBUG) printf("end create index\n");
 }
 
 void SmManager::drop_index(const std::string &tab_name, const std::string &col_name, Context *context) {
+    if(DEBUG) printf("start drop index\n");
     TabMeta &tab = db_.tabs_[tab_name];
     auto col = tab.get_col(col_name);
     if (!col->index) {
@@ -173,4 +228,5 @@ void SmManager::drop_index(const std::string &tab_name, const std::string &col_n
     ix_manager_->destroy_index(tab_name, col_idx);
     ihs_.erase(index_name);
     col->index = false;
+    if(DEBUG) printf("end drop index\n");
 }
