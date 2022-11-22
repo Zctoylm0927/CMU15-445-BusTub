@@ -60,7 +60,7 @@ bool IxIndexHandle::GetValue(const char *key, std::vector<Rid> *result, Transact
     }
     result->push_back(*rid);
     buffer_pool_manager_->UnpinPage(x->GetPageId(), false);
-    return false;
+    return true;
 }
 
 /**
