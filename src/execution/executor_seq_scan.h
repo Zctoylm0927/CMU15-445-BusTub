@@ -33,7 +33,6 @@ class SeqScanExecutor : public AbstractExecutor {
         std::map<CompOp, CompOp> swap_op = {
             {OP_EQ, OP_EQ}, {OP_NE, OP_NE}, {OP_LT, OP_GT}, {OP_GT, OP_LT}, {OP_LE, OP_GE}, {OP_GE, OP_LE},
         };
-
         for (auto &cond : conds_) {
             if (cond.lhs_col.tab_name != tab_name_) {
                 // lhs is on other table, now rhs must be on this table
@@ -65,7 +64,8 @@ class SeqScanExecutor : public AbstractExecutor {
             // 利用eval_conds判断是否当前记录(rec.get())满足谓词条件
             // 满足则中止循环
             // lab3 task2 todo end
-
+            if(eval_conds(cols_, fed_conds_, rec.get())) 
+                break;
             scan_->next();  // 找下一个有record的位置
         }
     }
@@ -79,6 +79,10 @@ class SeqScanExecutor : public AbstractExecutor {
             // 利用eval_conds判断是否当前记录(rec.get())满足谓词条件
             // 满足则中止循环
             // lab3 task2 todo End
+            rid_ = scan_->rid();
+            auto rec = fh_->get_record(rid_, context_);
+            if(eval_conds(cols_, fed_conds_, rec.get())) 
+                break;
         }
     }
 
@@ -92,6 +96,8 @@ class SeqScanExecutor : public AbstractExecutor {
         // lab3 task2 todo
         // 利用fh_得到记录record
         // lab3 task2 todo end
+        assert(!is_end());
+        return fh_->get_record(rid_, context_);
     }
 
     void feed(const std::map<TabCol, Value> &feed_dict) override {

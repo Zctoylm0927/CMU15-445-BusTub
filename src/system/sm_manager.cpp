@@ -20,6 +20,7 @@ void SmManager::create_db(const std::string &db_name) {
     // lab3 task1 Todo
     // 利用*inx命令创建目录作为数据库
     // lab3 task1 Todo End
+    if(DEBUG) printf("start create db\n");
     if (is_dir(db_name)) 
         throw DatabaseExistsError(db_name);
     std::string cmd = "mkdir " + db_name;
@@ -35,6 +36,7 @@ void SmManager::create_db(const std::string &db_name) {
     if (chdir("..") < 0) {
         throw UnixError();
     }
+    if(DEBUG) printf("end create db\n");
 }
 
 void SmManager::drop_db(const std::string &db_name) {
@@ -58,9 +60,11 @@ void SmManager::open_db(const std::string &db_name) {
     }
     // Load meta
     // 打开一个名为DB_META_NAME的文件
+    if(DEBUG) printf("success a\n");
     std::ifstream ifs(DB_META_NAME);
     // 将ofs打开的DB_META_NAME文件中的信息，按照定义好的operator>>操作符，读出到db_中
     ifs >> db_;  // 注意：此处重载了操作符>>
+    if(DEBUG) printf("success b\n");
     // Open all record files & index files
     for (auto &entry : db_.tabs_) {
         auto &tab = entry.second;
@@ -87,6 +91,7 @@ void SmManager::close_db() {
     // lab3 task1 Todo End
     if(DEBUG) printf("start close db\n");
     std::ofstream ofs(DB_META_NAME);
+    ofs << db_;
     db_.name_.clear();
     db_.tabs_.clear();
     for (auto &entry : fhs_) {
@@ -104,7 +109,8 @@ void SmManager::close_db() {
     if(DEBUG) printf("end close db\n");
 }
 
-void SmManager::show_tables(Context *context) {
+void SmManager::show_tables(Context *context) {    
+    if(DEBUG) printf("start show table\n");
     RecordPrinter printer(1);
     printer.print_separator(context);
     printer.print_record({"Tables"}, context);
@@ -114,9 +120,11 @@ void SmManager::show_tables(Context *context) {
         printer.print_record({tab.name}, context);
     }
     printer.print_separator(context);
+    if(DEBUG) printf("end show table\n");
 }
 
 void SmManager::desc_table(const std::string &tab_name, Context *context) {
+    if(DEBUG) printf("start desc table\n");
     TabMeta &tab = db_.get_table(tab_name);
 
     std::vector<std::string> captions = {"Field", "Type", "Index"};
@@ -132,6 +140,7 @@ void SmManager::desc_table(const std::string &tab_name, Context *context) {
     }
     // Print footer
     printer.print_separator(context);
+    if(DEBUG) printf("end desc table\n");
 }
 
 void SmManager::create_table(const std::string &tab_name, const std::vector<ColDef> &col_defs, Context *context) {    

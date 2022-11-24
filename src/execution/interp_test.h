@@ -122,7 +122,6 @@ class InterpForTest {
                 TabCol sel_col = {.tab_name = sv_sel_col->tab_name, .col_name = sv_sel_col->col_name};
                 sel_cols.push_back(sel_col);
             }
-
             ql_manager_->select_from(sel_cols, x->tabs, conds, context);
 
         } else {

@@ -10,6 +10,8 @@
 #include "index/ix.h"
 #include "record_printer.h"
 
+#define DEBUG 0
+
 TabCol QlManager::check_column(const std::vector<ColMeta> &all_cols, TabCol target) {
     if (target.tab_name.empty()) {
         // Table name not specified, infer table name from column name
@@ -181,7 +183,9 @@ std::vector<Condition> pop_conds(std::vector<Condition> &conds, const std::vecto
 void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std::string> &tab_names,
                             std::vector<Condition> conds, Context *context) {
     // Parse selector
+    if(DEBUG) std::cout<<"start from select"<<std::endl;
     auto all_cols = get_all_cols(tab_names);
+    if(DEBUG) std::cout<<"is no selection:"<< sel_cols.empty() <<std::endl;
     if (sel_cols.empty()) {
         // select all columns
         for (auto &col : all_cols) {
@@ -205,17 +209,34 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
         // 根据get_indexNo判断conds上有无索引
         // 创建合适的scan executor(有索引优先用索引)存入table_scan_executors
         // lab3 task2 Todo end
+        if(DEBUG) std::cout<<"index_no="<<index_no<<std::endl;
+        if(index_no != -1) {
+            table_scan_executors[i] = 
+                std::make_unique<IndexScanExecutor>(sm_manager_, tab_names[i], curr_conds, index_no, context);
+        }
+        else {
+            table_scan_executors[i] =
+                std::make_unique<SeqScanExecutor>(sm_manager_, tab_names[i], curr_conds, context);
+            if(DEBUG) std::cout<<"finish insert"<<std::endl;
+        }
     }
     assert(conds.empty());
-
-    std::unique_ptr<AbstractExecutor> executorTreeRoot = std::move(table_scan_executors.back());
+    int tab_names_len = tab_names.size();
+    std::unique_ptr<AbstractExecutor> executorTreeRoot = std::move(table_scan_executors[tab_names_len-1]);
 
     // lab3 task2 Todo
     // 构建算子二叉树
     // 逆序遍历tab_nodes为左节点, 现query_plan为右节点,生成joinNode作为新query_plan 根节点
     // 生成query_plan tree完毕后, 根节点转换成投影算子
     // lab3 task2 Todo End
-
+    if(DEBUG) std::cout<< "start proj" <<std::endl;
+    if(tab_names_len > 1) {
+        for(int i = tab_names_len - 2; i>=0 ; i--) {
+            executorTreeRoot = std::make_unique<NestedLoopJoinExecutor>(std::move(table_scan_executors[i]), std::move(executorTreeRoot));
+        }
+    }
+    executorTreeRoot = std::make_unique<ProjectionExecutor>(std::move(executorTreeRoot), sel_cols);
+    if(DEBUG) std::cout<< "end proj" <<std::endl;
     // Column titles
     std::vector<std::string> captions;
     captions.reserve(sel_cols.size());
