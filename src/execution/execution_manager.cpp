@@ -100,6 +100,8 @@ void QlManager::insert_into(const std::string &tab_name, std::vector<Value> valu
     // make InsertExecutor
     // call InsertExecutor.Next()
     // lab3 task3 Todo end
+    auto Insert = std::make_unique<InsertExecutor>(sm_manager_, tab_name, values, context);
+    Insert->Next();
 }
 
 void QlManager::delete_from(const std::string &tab_name, std::vector<Condition> conds, Context *context) {
@@ -113,6 +115,13 @@ void QlManager::delete_from(const std::string &tab_name, std::vector<Condition> 
     // 根据get_indexNo判断conds上有无索引
     // 创建合适的scan executor(有索引优先用索引)
     // lab3 task3 Todo end
+    int index_no = get_indexNo(tab_name, conds);
+    if(index_no != -1) {
+        scanExecutor =  std::make_unique<IndexScanExecutor>(sm_manager_, tab_name, conds, index_no, context);
+    }
+    else {
+        scanExecutor = std::make_unique<SeqScanExecutor>(sm_manager_, tab_name, conds, context);
+    }
 
     for (scanExecutor->beginTuple(); !scanExecutor->is_end(); scanExecutor->nextTuple()) {
         rids.push_back(scanExecutor->rid());
@@ -122,6 +131,8 @@ void QlManager::delete_from(const std::string &tab_name, std::vector<Condition> 
     // make deleteExecutor
     // call deleteExecutor.Next()
     // lab3 task3 Todo end
+    auto Delete = std::make_unique<DeleteExecutor>(sm_manager_, tab_name, conds, rids, context);
+    Delete->Next();
 }
 
 void QlManager::update_set(const std::string &tab_name, std::vector<SetClause> set_clauses,
@@ -131,22 +142,42 @@ void QlManager::update_set(const std::string &tab_name, std::vector<SetClause> s
     conds = check_where_clause({tab_name}, conds);
     // Get raw values in set clause
     for (auto &set_clause : set_clauses) {
+        if(DEBUG)std::cout<<set_clause.lhs.col_name<<std::endl;
         auto lhs_col = tab.get_col(set_clause.lhs.col_name);
         if (lhs_col->type != set_clause.rhs.type) {
             throw IncompatibleTypeError(coltype2str(lhs_col->type), coltype2str(set_clause.rhs.type));
         }
         set_clause.rhs.init_raw(lhs_col->len);
+        if(DEBUG)std::cout<<set_clause.rhs.int_val<<' '<<set_clause.rhs.float_val<<' '<<set_clause.rhs.str_val<<std::endl;
     }
     // Get all RID to update
     std::vector<Rid> rids;
 
     // lab3 task3 Todo
     // make scan executor
-    // for (scanExecutor->beginTuple(); !scanExecutor->is_end(); scanExecutor->nextTuple())
+    std::unique_ptr<AbstractExecutor> scanExecutor;
+    int index_no = get_indexNo(tab_name, conds);
+    if(index_no != -1) {
+        scanExecutor =  std::make_unique<IndexScanExecutor>(sm_manager_, tab_name, conds, index_no, context);
+    }
+    else {
+        scanExecutor = std::make_unique<SeqScanExecutor>(sm_manager_, tab_name, conds, context);
+    }
+
+    for (scanExecutor->beginTuple(); !scanExecutor->is_end(); scanExecutor->nextTuple()) {
+/*      auto Tuple = scanExecutor->Next();
+        for (auto &set_clause : set_clauses) {
+            auto lhs_col = tab.get_col(set_clause.lhs.col_name);
+            memcpy(Tuple->data + lhs_col->offset, set_clause.rhs.raw->data, lhs_col->len);
+        } */
+        rids.push_back(scanExecutor->rid());
+    }
     // 将rid存入rids
     // make updateExecutor
     // call updateExecutor.Next()
     // lab3 task3 Todo end
+    auto Update = std::make_unique<UpdateExecutor>(sm_manager_, tab_name, set_clauses, conds, rids, context);
+    Update->Next();
 }
 
 /**

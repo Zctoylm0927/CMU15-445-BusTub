@@ -37,26 +37,43 @@ class UpdateExecutor : public AbstractExecutor {
                 // lab3 task3 Todo
                 // 获取需要的索引句柄,填充vector ihs
                 // lab3 task3 Todo end
+                ihs[lhs_col_idx] = sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_, lhs_col_idx)).get();
             }
         }
         // Update each rid from record file and index file
         for (auto &rid : rids_) {
             auto rec = fh_->get_record(rid, context_);
+            for (auto &set_clause : set_clauses_) {
+                auto lhs_col = tab_.get_col(set_clause.lhs.col_name);
+                memcpy(rec->data + lhs_col->offset, set_clause.rhs.raw->data, lhs_col->len);
+            }
             // lab3 task3 Todo
             // Remove old entry from index
             // lab3 task3 Todo end
-
+            for (size_t col_i = 0; col_i < set_clauses_.size(); col_i++) {
+                auto lhs_col = tab_.get_col(set_clauses_[col_i].lhs.col_name);
+                if (lhs_col->index) {
+                    ihs[col_i]->delete_entry(rec->data + lhs_col->offset, context_->txn_);
+                }
+            }
             // record a update operation into the transaction
             RmRecord update_record{rec->size};
             memcpy(update_record.data, rec->data, rec->size);
-
+            
             // lab3 task3 Todo
             // Update record in record file
             // lab3 task3 Todo end
-
+            fh_->update_record(rid, rec->data, context_);
             // lab3 task3 Todo
             // Insert new entry into index
             // lab3 task3 Todo end
+            for (size_t col_i = 0; col_i < set_clauses_.size(); col_i++) {
+                auto lhs_col = tab_.get_col(set_clauses_[col_i].lhs.col_name);
+                if (lhs_col->index) {
+                    auto ih = sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_, col_i)).get();
+                    ih->insert_entry(rec->data + lhs_col->offset, rid, context_->txn_);
+                }
+            }
         }
         return nullptr;
     }

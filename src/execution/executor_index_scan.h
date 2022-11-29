@@ -72,16 +72,16 @@ class IndexScanExecutor : public AbstractExecutor {
                 }
                 // lab3 task2 todo
                 else if(cond.op == OP_LT) {
-                    lower = ih->lower_bound(rhs_key);
+                    upper = ih->lower_bound(rhs_key);
                 }
                 else if(cond.op == OP_GT) {
-                    upper = ih->upper_bound(rhs_key);
-                }
-                else if(cond.op == OP_LE) {
                     lower = ih->upper_bound(rhs_key);
                 }
+                else if(cond.op == OP_LE) {
+                    upper = ih->upper_bound(rhs_key);
+                }
                 else if(cond.op == OP_GE) {
-                    upper = ih->lower_bound(rhs_key);
+                    lower = ih->lower_bound(rhs_key);
                 }
                 else{
                     throw InternalError("Unexpected op type");

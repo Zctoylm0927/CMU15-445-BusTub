@@ -34,6 +34,25 @@ class InsertExecutor : public AbstractExecutor {
         // Insert into record file
         // Insert into index
         // lab3 task3 Todo end
+        RmRecord rec(fh_->get_file_hdr().record_size);
+        for (size_t i = 0; i < values_.size(); i++) {
+            auto &col = tab_.cols[i];
+            auto &val = values_[i];
+            if (col.type != val.type) {
+                throw IncompatibleTypeError(coltype2str(col.type), coltype2str(val.type));
+            }
+            val.init_raw(col.len);
+            memcpy(rec.data + col.offset, val.raw->data, col.len);
+        }
+        rid_ = fh_->insert_record(rec.data, context_);
+        for (size_t i = 0; i < values_.size(); i++) {
+            auto &col = tab_.cols[i];
+            if (col.index) {
+                auto ih = sm_manager_->ihs_.at(sm_manager_->get_ix_manager()->get_index_name(tab_name_, i)).get();
+                ih->insert_entry(rec.data + col.offset, rid_, context_->txn_);
+            }
+        }
+        //return std::make_unique<RmRecord>(rec);
         return nullptr;
     }
     Rid &rid() override { return rid_; }
