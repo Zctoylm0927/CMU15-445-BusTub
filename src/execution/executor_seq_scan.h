@@ -59,6 +59,7 @@ class SeqScanExecutor : public AbstractExecutor {
         // 得到第一个满足fed_conds_条件的record,并把其rid赋给算子成员rid_
         while (!scan_->is_end()) {
             rid_ = scan_->rid();
+<<<<<<< HEAD
             auto rec = fh_->get_record(rid_, context_);  // TableHeap->GetTuple() 当前扫描到的记录
             // lab3 task2 todo
             // 利用eval_conds判断是否当前记录(rec.get())满足谓词条件
@@ -66,6 +67,18 @@ class SeqScanExecutor : public AbstractExecutor {
             // lab3 task2 todo end
             if(eval_conds(cols_, fed_conds_, rec.get())) 
                 break;
+=======
+            try {
+                auto rec = fh_->get_record(rid_, context_);  // TableHeap->GetTuple() 当前扫描到的记录
+                // lab3 task2 todo
+                // 利用eval_conds判断是否当前记录(rec.get())满足谓词条件
+                // 满足则中止循环
+                // lab3 task2 todo end
+            } catch (RecordNotFoundError &e) {
+                std::cerr << e.what() << std::endl;
+            }
+
+>>>>>>> 42eeb3b24e652d8d871a19d141d19e023c6ada0b
             scan_->next();  // 找下一个有record的位置
         }
     }
