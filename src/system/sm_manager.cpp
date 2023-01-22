@@ -239,3 +239,54 @@ void SmManager::drop_index(const std::string &tab_name, const std::string &col_n
     col->index = false;
     if(DEBUG) printf("end drop index\n");
 }
+
+void SmManager::rollback_insert(const std::string &tab_name, const Rid &rid, Context *context) {    
+    // delete then insert
+    auto tab = db_.get_table(tab_name);
+    auto rec = fhs_.at(tab_name).get()->get_record(rid, context);
+    if(DEBUG) printf("start rollback insert\n");
+    for (size_t i=0; i<tab.cols.size(); i++) {
+        if (tab.cols[i].index) {
+            auto ih = ihs_.at(get_ix_manager()->get_index_name(tab_name, i)).get();
+            ih->delete_entry(rec->data + tab.cols[i].offset, nullptr);
+        }
+    }
+    fhs_.at(tab_name).get()->delete_record(rid, context);
+    if(DEBUG) printf("end rollback insert\n");
+}
+
+void SmManager::rollback_delete(const std::string &tab_name, const RmRecord &record, Context *context) {    
+    // insert then delete
+    auto tab = db_.get_table(tab_name);
+    auto rid = fhs_.at(tab_name).get()->insert_record(record.data, context);
+    if(DEBUG) printf("start rollback delete\n");
+    for (size_t i=0; i<tab.cols.size(); i++) {
+        if (tab.cols[i].index) {
+            auto ih = ihs_.at(get_ix_manager()->get_index_name(tab_name, i)).get();
+            ih->insert_entry(record.data + tab.cols[i].offset, rid, context->txn_);
+        }
+    }
+    if(DEBUG) printf("end rollback delete\n");
+}
+
+void SmManager::rollback_update(const std::string &tab_name, const Rid &rid, const RmRecord &record, Context *context) {
+    // delete than insert than update
+    auto tab = db_.get_table(tab_name);
+    auto rec = fhs_.at(tab_name).get()->get_record(rid, context);
+    if(DEBUG) printf("start rollback update\n");
+    for (size_t i=0; i<tab.cols.size(); i++) {
+        if (tab.cols[i].index) {
+            auto ih = ihs_.at(get_ix_manager()->get_index_name(tab_name, i)).get();
+            ih->delete_entry(rec->data + tab.cols[i].offset, nullptr);
+        }
+    }
+    if(DEBUG) printf("end delete start insert\n");
+    fhs_.at(tab_name).get()->update_record(rid, record.data, context);
+    for (size_t i=0; i<tab.cols.size(); i++) {
+        if (tab.cols[i].index) {
+            auto ih = ihs_.at(get_ix_manager()->get_index_name(tab_name, i)).get();
+            ih ->insert_entry(record.data + tab.cols[i].offset, rid, context->txn_);
+        }
+    }
+    if(DEBUG) printf("end rollback update\n");
+}

@@ -56,10 +56,13 @@ class UpdateExecutor : public AbstractExecutor {
                     ihs[col_i]->delete_entry(rec->data + lhs_col->offset, context_->txn_);
                 }
             }
+            // lab 4 to do 
+            WriteRecord* wr = new WriteRecord(WType::UPDATE_TUPLE, tab_name_, rid, *rec);
+            context_->txn_->AppendWriteRecord(wr);
+            // lab 4 end
             // record a update operation into the transaction
             RmRecord update_record{rec->size};
             memcpy(update_record.data, rec->data, rec->size);
-            
             // lab3 task3 Todo
             // Update record in record file
             // lab3 task3 Todo end

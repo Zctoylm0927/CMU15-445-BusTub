@@ -45,6 +45,10 @@ class InsertExecutor : public AbstractExecutor {
             memcpy(rec.data + col.offset, val.raw->data, col.len);
         }
         rid_ = fh_->insert_record(rec.data, context_);
+        // lab 4 to do
+        WriteRecord *wr = new WriteRecord(WType::INSERT_TUPLE, tab_name_, rid_);
+        context_->txn_->AppendWriteRecord(wr);
+        // lab 4 end
         for (size_t i = 0; i < values_.size(); i++) {
             auto &col = tab_.cols[i];
             if (col.index) {
