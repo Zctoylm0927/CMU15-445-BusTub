@@ -37,12 +37,12 @@ bool LockManager::LockSharedOnRecord(Transaction *txn, const Rid &rid, int tab_f
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, rid, LockDataType::RECORD);
     // 3. 查找当前事务是否已经申请了目标数据项上的锁，如果存在则根据锁类型进行操作，否则执行下一步操
-    /* 
-    LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
+     
+    LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, rid, LockDataType::RECORD)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+    
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
@@ -79,12 +79,12 @@ bool LockManager::LockExclusiveOnRecord(Transaction *txn, const Rid &rid, int ta
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, rid, LockDataType::RECORD);
     // 3. 查找当前事务是否已经申请了目标数据项上的锁，如果存在则根据锁类型进行操作，否则执行下一步操
-    /* 
-    LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
+    
+    LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, rid, LockDataType::RECORD)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+    
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
@@ -120,12 +120,12 @@ bool LockManager::LockSharedOnTable(Transaction *txn, int tab_fd) {
     }
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, LockDataType::TABLE);
-    /* 
+    
     LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
@@ -164,12 +164,12 @@ bool LockManager::LockExclusiveOnTable(Transaction *txn, int tab_fd) {
     }
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, LockDataType::TABLE);
-    /* 
+    
     LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+    
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
@@ -205,12 +205,12 @@ bool LockManager::LockISOnTable(Transaction *txn, int tab_fd) {
     }
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, LockDataType::TABLE);
-    /* 
+    
     LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+    
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
@@ -248,20 +248,17 @@ bool LockManager::LockIXOnTable(Transaction *txn, int tab_fd) {
     txn->SetState(TransactionState::GROWING);
     LockDataId lock_id(tab_fd, LockDataType::TABLE);
     // 3. 查找当前事务是否已经申请了目标数据项上的锁，如果存在则根据锁类型进行操作，否则执行下一步操
-    /* 
+    
     LockRequestQueue *lock_queue = &lock_table_[LockDataId(tab_fd, LockDataType::TABLE)];
     auto iter = lock_queue->request_queue_.begin();
     for (; iter != lock_queue->request_queue_.end(); ++iter) 
         if (iter->txn_id_ == txn->GetTransactionId()) break;
-    */
+
     // 4. 将要申请的锁放入到全局锁表中，并通过组模式来判断是否可以成功授予锁
     txn->GetLockSet()->insert(lock_id);
     LockRequest *need_lock = new LockRequest(txn->GetTransactionId(), LockMode::SHARED);
     lock_table_[lock_id].shared_lock_num_++;
     lock_table_[lock_id].request_queue_.push_back(*need_lock);
-    // group mode    
-    while (group_mode == GroupLockMode::S && group_mode == GroupLockMode::X && group_mode == GroupLockMode::SIX)
-        lock_table_[lock_id].cv_.wait(lock);
     // 5. 如果成功，更新目标数据项在全局锁表中的信息，否则阻塞当前操作
     if (group_mode == GroupLockMode::IS || group_mode == GroupLockMode::NON_LOCK)
         lock_table_[lock_id].group_lock_mode_ = GroupLockMode::IX;
