@@ -140,6 +140,20 @@ struct BinaryExpr : public TreeNode {
             lhs(std::move(lhs_)), op(op_), rhs(std::move(rhs_)) {}
 };
 
+struct OrderExpr : public TreeNode {
+    std::string col_name;
+    std::string order_name;
+    OrderExpr(std::string col_name_, std::string order_name_) :
+            col_name(std::move(col_name_)), order_name(std::move(order_name_)) {}
+};
+
+struct Order2Limit : public TreeNode {
+    std::vector<std::shared_ptr<OrderExpr>> orders;
+    int limit_num;
+    Order2Limit(std::vector<std::shared_ptr<OrderExpr>> orders_, int limit_num_) :
+            orders(std::move(orders_)), limit_num(limit_num_) {}
+};
+
 struct InsertStmt : public TreeNode {
     std::string tab_name;
     std::vector<std::shared_ptr<Value>> vals;
@@ -171,11 +185,12 @@ struct SelectStmt : public TreeNode {
     std::vector<std::shared_ptr<Col>> cols;
     std::vector<std::string> tabs;
     std::vector<std::shared_ptr<BinaryExpr>> conds;
-
+    std::shared_ptr<Order2Limit> orders;
     SelectStmt(std::vector<std::shared_ptr<Col>> cols_,
                std::vector<std::string> tabs_,
-               std::vector<std::shared_ptr<BinaryExpr>> conds_) :
-            cols(std::move(cols_)), tabs(std::move(tabs_)), conds(std::move(conds_)) {}
+               std::vector<std::shared_ptr<BinaryExpr>> conds_,
+               std::shared_ptr<Order2Limit> orders_) :
+            cols(std::move(cols_)), tabs(std::move(tabs_)), conds(std::move(conds_)), orders(std::move(orders_)) {}
 };
 
 // Semantic value
@@ -207,6 +222,11 @@ struct SemValue {
 
     std::shared_ptr<BinaryExpr> sv_cond;
     std::vector<std::shared_ptr<BinaryExpr>> sv_conds;
+
+    std::shared_ptr<OrderExpr> sv_order;
+    std::vector<std::shared_ptr<OrderExpr>> sv_orders;
+
+    std::shared_ptr<Order2Limit> sv_limit;
 };
 
 extern std::shared_ptr<ast::TreeNode> parse_tree;

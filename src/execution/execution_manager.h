@@ -79,6 +79,11 @@ struct SetClause {
     Value rhs;
 };
 
+struct Ordercon {
+    std::string col_name;
+    std::string order_name;
+};
+
 class QlManager {
    private:
     SmManager *sm_manager_;
@@ -94,7 +99,7 @@ class QlManager {
                     std::vector<Condition> conds, Context *context);
 
     void select_from(std::vector<TabCol> sel_cols, const std::vector<std::string> &tab_names,
-                     std::vector<Condition> conds, Context *context);
+                     std::vector<Condition> conds, std::vector<Ordercon> orders, int limit_num, Context *context);
 
    private:
     TabCol check_column(const std::vector<ColMeta> &all_cols, TabCol target);

@@ -122,7 +122,12 @@ class InterpForTest {
                 TabCol sel_col = {.tab_name = sv_sel_col->tab_name, .col_name = sv_sel_col->col_name};
                 sel_cols.push_back(sel_col);
             }
-            ql_manager_->select_from(sel_cols, x->tabs, conds, context);
+            std::vector<Ordercon> orders;
+            for (auto &sv_order : x->orders->orders) {
+                Ordercon sel_order = {.col_name = sv_order->col_name, .order_name = sv_order->order_name};
+                orders.push_back(sel_order);
+            }
+            ql_manager_->select_from(sel_cols, x->tabs, conds, orders, x->orders->limit_num, context);
 
         } else {
             throw InternalError("Unexpected AST root");

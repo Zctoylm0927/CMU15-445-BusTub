@@ -1,8 +1,10 @@
-create table tb(s int, a int, b float, c char(16));
-insert into tb values (0, 1, 1.2, 'abc');
-insert into tb values (2, 2, 2.0, 'def');
-insert into tb values (5, 3, 2., 'xyz');
-create index tb (a);
-desc tb;
-select * from tb where a>=1;
+create table test (Company char(10), OrderNumber int);
+insert into test values('IBM',3532);
+insert into test values('Microsoft',2356);
+insert into test values('Apple',4698);
+insert into test values('Microsoft',6953);
+SELECT Company, OrderNumber FROM test ORDER BY Company;
+SELECT Company, OrderNumber FROM test ORDER BY Company, OrderNumber;
+SELECT Company, OrderNumber FROM test ORDER BY Company DESC, OrderNumber ASC;
+SELECT Company, OrderNumber FROM test ORDER BY OrderNumber ASC LIMIT 2;
 #

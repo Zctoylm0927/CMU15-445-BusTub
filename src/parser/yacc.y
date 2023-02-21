@@ -21,7 +21,7 @@ using namespace ast;
 %define parse.error verbose
 
 // keywords
-%token SHOW TABLES CREATE TABLE DROP DESC INSERT INTO VALUES DELETE FROM
+%token SHOW TABLES CREATE TABLE DROP DESC ASC LIMIT INSERT INTO VALUES DELETE FROM ORDER
 WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN EXIT HELP TXN_BEGIN TXN_COMMIT TXN_ABORT TXN_ROLLBACK
 // non-keywords
 %token LEQ NEQ GEQ T_EOF
@@ -40,7 +40,7 @@ WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN EXIT HELP TXN_BEGIN TXN_CO
 %type <sv_expr> expr
 %type <sv_val> value
 %type <sv_vals> valueList
-%type <sv_str> tbName colName
+%type <sv_str> tbName colName OrderName
 %type <sv_strs> tableList
 %type <sv_col> col
 %type <sv_cols> colList selector
@@ -48,6 +48,10 @@ WHERE UPDATE SET SELECT INT CHAR FLOAT INDEX AND JOIN EXIT HELP TXN_BEGIN TXN_CO
 %type <sv_set_clauses> setClauses
 %type <sv_cond> condition
 %type <sv_conds> whereClause optWhereClause
+%type <sv_order> preOrderClause
+%type <sv_orders> OrderClause 
+%type <sv_limit> optOrderClause
+%type <sv_int> optLimitClause
 
 %%
 start:
@@ -142,9 +146,63 @@ dml:
     {
         $$ = std::make_shared<UpdateStmt>($2, $4, $5);
     }
-    |   SELECT selector FROM tableList optWhereClause
+    |   SELECT selector FROM tableList optWhereClause optOrderClause
     {
-        $$ = std::make_shared<SelectStmt>($2, $4, $5);
+        $$ = std::make_shared<SelectStmt>($2, $4, $5, $6);
+    }
+    ;
+
+OrderName:
+        /* epsilon */ 
+    {
+        $$ = "ASC";
+    }
+    |   ASC
+    {
+        $$ = "ASC";
+    }
+    |   DESC
+    {
+        $$ = "DESC";
+    }
+    ;
+
+optLimitClause:
+    {
+        $$ = -1;
+    }
+    |   LIMIT VALUE_INT
+    {
+        $$ = $2;
+    }
+    ;
+
+preOrderClause:
+    colName OrderName
+    {
+        $$ = std::make_shared<OrderExpr>($1, $2);
+    }
+    ;
+
+optOrderClause:
+        /* epsilon */ 
+    { 
+        $$ = std::make_shared<Order2Limit>(std::vector<std::shared_ptr<OrderExpr>>{}, -1);
+    }
+    |   ORDER OrderClause optLimitClause
+    {
+        $$ = std::make_shared<Order2Limit>($2, $3);
+    }
+    ;
+
+OrderClause:
+        preOrderClause
+    {
+        $$ = std::vector<std::shared_ptr<OrderExpr>>{$1};
+    }
+    |   OrderClause ',' preOrderClause
+    {
+        $$.push_back($3);
     }
     ;
 

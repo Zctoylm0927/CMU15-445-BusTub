@@ -210,9 +210,10 @@ std::vector<Condition> pop_conds(std::vector<Condition> &conds, const std::vecto
  * @param sel_cols select plan 选取的列
  * @param tab_names select plan 目标的表
  * @param conds select plan 选取条件
+ * @param orders select plan 排序条件
  */
 void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std::string> &tab_names,
-                            std::vector<Condition> conds, Context *context) {
+                            std::vector<Condition> conds, std::vector<Ordercon> orders, int limit_num, Context *context) {
     // Parse selector
     if(DEBUG) std::cout<<"start from select"<<std::endl;
     auto all_cols = get_all_cols(tab_names);
@@ -279,9 +280,23 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
     rec_printer.print_separator(context);
     rec_printer.print_record(captions, context);
     rec_printer.print_separator(context);
+    // Print order
+    std::vector<int> sv2tab;
+    std::vector<int> svorder;
+    for(auto &sv_order: orders) {
+        std::cout << sv_order.col_name << ' ' << sv_order.order_name << std::endl;
+        svorder.push_back((sv_order.order_name.compare("ASC") == 0));
+        for(int i=0;i<captions.size();++i) {
+            auto tab_col_name = captions[i];
+            if(tab_col_name.compare(sv_order.col_name) == 0) {sv2tab.push_back(i); break;}
+        }
+    }
+    for(int i=0;i<orders.size();++i)
+        if(DEBUG)std::cout<< sv2tab[i] << ' ' << svorder[i]<< std::endl;
     // Print records
     size_t num_rec = 0;
     // 执行query_plan
+    std::vector<std::vector<std::string>> ans;
     for (executorTreeRoot->beginTuple(); !executorTreeRoot->is_end(); executorTreeRoot->nextTuple()) {
         auto Tuple = executorTreeRoot->Next();
         std::vector<std::string> columns;
@@ -298,9 +313,23 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
             }
             columns.push_back(col_str);
         }
-        rec_printer.print_record(columns, context);
+        ans.push_back(columns);
         num_rec++;
     }
+    for(int k=orders.size()-1;k>=0;--k) 
+        for(int i=0;i<ans.size();++i)
+            for(int j=i+1;j<ans.size();++j) {
+                int num = sv2tab[k];
+                if(DEBUG)std::cout<< svorder[k] << ' '<< ans[i][num] << ' '<<ans[j][num]<<std::endl;
+                if(ans[i][num] == ans[j][num]) continue;
+                int com_result = ans[i][num] < ans[j][num];
+                int need_result = svorder[k];
+                if(com_result ^ need_result) swap(ans[i],ans[j]);
+            }
+    int out_len = ans.size();
+    if(limit_num!=-1) out_len = limit_num;
+    for(int i=0;i<out_len;++i) rec_printer.print_record(ans[i], context);
+    ans.clear();
     // Print footer
     rec_printer.print_separator(context);
     // Print record count
