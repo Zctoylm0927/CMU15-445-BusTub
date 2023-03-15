@@ -27,7 +27,7 @@ class IxIndexHandle {
     bool GetValue(const char *key, std::vector<Rid> *result, Transaction *transaction);
 
     std::pair<IxNodeHandle*, bool> FindLeafPage(const char *key, Operation operation, Transaction *transaction);
-
+    std::pair<IxNodeHandle*, bool> check_optimism(const char *key, IxNodeHandle* root, Operation operation);
     // for insert
     bool insert_entry(const char *key, const Rid &value, Transaction *transaction);
 

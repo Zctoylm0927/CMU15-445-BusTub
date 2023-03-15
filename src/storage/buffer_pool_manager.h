@@ -80,7 +80,7 @@ class BufferPoolManager {
         if (REPLACER_TYPE.compare("LRU"))
             replacer_ = new LRUReplacer(pool_size_);
         else if (REPLACER_TYPE.compare("CLOCK"))
-            replacer_ = new LRUReplacer(pool_size_);
+            replacer_ = new ClockReplacer(pool_size_);
         else {
             LOG_WARN("BufferPoolManager Replacer type defined wrong, use LRU as replacer.\n");
             replacer_ = new LRUReplacer(pool_size_);

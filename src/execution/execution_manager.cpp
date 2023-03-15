@@ -284,7 +284,7 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
     std::vector<int> sv2tab;
     std::vector<int> svorder;
     for(auto &sv_order: orders) {
-        std::cout << sv_order.col_name << ' ' << sv_order.order_name << std::endl;
+        if(DEBUG)std::cout << sv_order.col_name << ' ' << sv_order.order_name << std::endl;
         svorder.push_back((sv_order.order_name.compare("ASC") == 0));
         for(int i=0;i<captions.size();++i) {
             auto tab_col_name = captions[i];
@@ -323,6 +323,7 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
                 if(DEBUG)std::cout<< svorder[k] << ' '<< ans[i][num] << ' '<<ans[j][num]<<std::endl;
                 if(ans[i][num] == ans[j][num]) continue;
                 int com_result = ans[i][num] < ans[j][num];
+                if(ans[i][num][0]=='-' && ans[j][num][0]=='-') com_result^=1;
                 int need_result = svorder[k];
                 if(com_result ^ need_result) swap(ans[i],ans[j]);
             }
@@ -333,5 +334,5 @@ void QlManager::select_from(std::vector<TabCol> sel_cols, const std::vector<std:
     // Print footer
     rec_printer.print_separator(context);
     // Print record count
-    RecordPrinter::print_record_count(num_rec, context);
+    RecordPrinter::print_record_count(out_len, context);
 }
